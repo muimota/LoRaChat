@@ -8,8 +8,10 @@
 </head>
 <body>
   <h1>ESP32 Web Server</h1>
-  <p>GPIO state: <strong> %STATE%</strong></p>
-  <p><a href="/on"><button class="button">ON</button></a></p>
-  <p><a href="/off"><button class="button button2">OFF</button></a></p>
+  <p>Last:%MESSAGE%</p>
+  <form action="/post"  method="post">
+  	message: <input type="text" name="message">
+  	<input type="submit">
+  </form>
 </body>
 </html>

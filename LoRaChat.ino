@@ -9,8 +9,13 @@
 #include "SPIFFS.h"
 
 // Replace with your network credentials
-const char* ssid = "LoraChat";
+const char* ssid = "LoRaChat";
 const char* password = "";
+
+unsigned long lastTime;
+int counter;
+String message;
+
 
 // Set LED GPIO
 const int ledPin = 2;
@@ -23,15 +28,8 @@ AsyncWebServer server(80);
 // Replaces placeholder with LED state value
 String processor(const String& var){
   Serial.println(var);
-  if(var == "STATE"){
-    if(digitalRead(ledPin)){
-      ledState = "ON";
-    }
-    else{
-      ledState = "OFF";
-    }
-    Serial.print(ledState);
-    return ledState;
+  if(var == "MESSAGE"){
+    return message;
   }
   return String();
 }
@@ -78,10 +76,28 @@ void setup(){
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
+  // Send a POST request to <IP>/post with a form field message set to <message>
+  server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
+    String message;
+      if (request->hasParam("message", true)) {
+          message = request->getParam("message", true)->value();
+      } else {
+          message = "No message sent";
+      }
+      Serial.println("received: " + message);
+      request->send(200, "text/plain", "received: " + message);
+  });
   // Start server
   server.begin();
+
+  lastTime = millis();
+  counter = 0;
 }
  
 void loop(){
-  
+  if(millis() - lastTime > 1000){
+   message = "Message " + String(counter);
+   lastTime = millis();  
+   counter ++;
+  }
 }
