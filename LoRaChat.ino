@@ -8,9 +8,6 @@
 #include "ESPAsyncWebServer.h"
 #include "SPIFFS.h"
 
-// Replace with your network credentials
-const char* ssid = "LoRaChat";
-const char* password = "";
 
 unsigned long lastTime;
 int counter;
@@ -67,8 +64,10 @@ void setup(){
     return;
   }
 
+  String ssid("LoRa_" + String((uint16_t) (ESP.getEfuseMac() >> 32),HEX)); 
+  const char password[] = "";
   // You can remove the password parameter if you want the AP to be open.
-  WiFi.softAP(ssid, password);
+  WiFi.softAP(ssid.c_str(), password);
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
