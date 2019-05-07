@@ -16,14 +16,10 @@ unsigned long lastTime;
 int counter;
 String message;
 
-
 // Set LED GPIO
 const int ledPin = 2;
 // Stores LED state
 String ledState;
-
-// Create AsyncWebServer object on port 80
-AsyncWebServer server(80);
 
 // Replaces placeholder with LED state value
 String processor(const String& var){
@@ -33,7 +29,33 @@ String processor(const String& var){
   }
   return String();
 }
+
+void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
+  
+  if(type == WS_EVT_CONNECT){
  
+    Serial.println("Websocket client connection received");
+ 
+  } else if(type == WS_EVT_DISCONNECT){
+    Serial.print(client->id());
+    Serial.println(" disconnected");
+ 
+  } else if(type == WS_EVT_DATA){
+ 
+    Serial.print(client->id());
+    Serial.print("->");
+    for(int i=0; i < len; i++) {
+          Serial.print((char) data[i]);
+    }
+    Serial.println();
+    server->textAll(data,len);
+  }
+}
+
+AsyncWebSocket ws("/msg");
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
+
 void setup(){
   // Serial port for debugging purposes
   Serial.begin(9600);
@@ -58,46 +80,31 @@ void setup(){
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
-  
+
+  // Route to javascript file
+  server.on("/jquery.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/jquery.min.js", "text/javascript");
+  });
+  // Route to javascript file
+  server.on("/frontend.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/frontend.js", "text/javascript");
+  });
+
   // Route to load style.css file
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
   });
 
-  // Route to set GPIO to HIGH
-  server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
-    digitalWrite(ledPin, HIGH);    
-    request->send(SPIFFS, "/index.html", String(), false, processor);
-  });
   
-  // Route to set GPIO to LOW
-  server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
-    digitalWrite(ledPin, LOW);    
-    request->send(SPIFFS, "/index.html", String(), false, processor);
-  });
-
-  // Send a POST request to <IP>/post with a form field message set to <message>
-  server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
-    String message;
-      if (request->hasParam("message", true)) {
-          message = request->getParam("message", true)->value();
-      } else {
-          message = "No message sent";
-      }
-      Serial.println("received: " + message);
-      request->send(200, "text/plain", "received: " + message);
-  });
+  ws.onEvent(onEvent);
+  server.addHandler(&ws);
+  
   // Start server
   server.begin();
-
+  
+  
   lastTime = millis();
-  counter = 0;
 }
  
 void loop(){
-  if(millis() - lastTime > 1000){
-   message = "Message " + String(counter);
-   lastTime = millis();  
-   counter ++;
-  }
 }
