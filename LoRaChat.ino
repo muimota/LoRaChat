@@ -1,6 +1,7 @@
 /*********
-  Rui Santos
-  Complete project details at https://randomnerdtutorials.com  
+ * 2019 Martin Nadal
+ * with portions of:
+  Rui SantosComplete project details at https://randomnerdtutorials.com  
 *********/
 
 // Import required libraries
@@ -8,24 +9,26 @@
 #include "ESPAsyncWebServer.h"
 #include "SPIFFS.h"
 
+#include <U8x8lib.h>
+#include <LoRa.h>
+
+//LORA Parameters
+#define SS      18
+#define RST     14
+#define DI0     26
+#define BAND    915E6
+
+// the OLED used
+U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ 15, /* data=*/ 4, /* reset=*/ 16);
+
+#define U8LOG_WIDTH 16
+#define U8LOG_HEIGHT 8
+uint8_t u8log_buffer[U8LOG_WIDTH*U8LOG_HEIGHT];
+U8X8LOG u8x8log;
 
 unsigned long lastTime;
 int counter;
 String message;
-
-// Set LED GPIO
-const int ledPin = 2;
-// Stores LED state
-String ledState;
-
-// Replaces placeholder with LED state value
-String processor(const String& var){
-  Serial.println(var);
-  if(var == "MESSAGE"){
-    return message;
-  }
-  return String();
-}
 
 void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   
@@ -39,12 +42,13 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
  
   } else if(type == WS_EVT_DATA){
  
-    Serial.print(client->id());
-    Serial.print("->");
+    u8x8log.print(client->id());
+    u8x8log.print("->");
     for(int i=0; i < len; i++) {
-          Serial.print((char) data[i]);
+          u8x8log.print((char) data[i]);
     }
-    Serial.println();
+    u8x8log.println();
+    
     server->textAll(data,len);
   }
 }
@@ -56,8 +60,19 @@ AsyncWebServer server(80);
 void setup(){
   // Serial port for debugging purposes
   Serial.begin(9600);
-  pinMode(ledPin, OUTPUT);
+  
+  SPI.begin(5, 19, 27, 18);
+  LoRa.setPins(SS, RST, DI0);
 
+  //screen
+  u8x8.begin();
+  u8x8.setFont(u8x8_font_chroma48medium8_r);
+  
+  u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
+  u8x8log.setRedrawMode(1);    // 0: Update screen with newline, 1: Update screen for every char  
+
+  u8x8log.print("LoRaChat (c)2019\n");
+  
   // Initialize SPIFFS
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
@@ -77,7 +92,7 @@ void setup(){
 
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+    request->send(SPIFFS, "/index.html", "text/html");
   });
 
   // Route to javascript file
@@ -94,15 +109,13 @@ void setup(){
     request->send(SPIFFS, "/style.css", "text/css");
   });
 
-  
+
   ws.onEvent(onEvent);
   server.addHandler(&ws);
   
   // Start server
   server.begin();
-  
-  
-  lastTime = millis();
+ 
 }
  
 void loop(){
