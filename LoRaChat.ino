@@ -33,7 +33,6 @@ String message;
 void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   
   if(type == WS_EVT_CONNECT){
- 
     Serial.println("Websocket client connection received");
  
   } else if(type == WS_EVT_DISCONNECT){
@@ -42,28 +41,54 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
  
   } else if(type == WS_EVT_DATA){
  
-    u8x8log.print(client->id());
-    u8x8log.print("->");
+    Serial.print(client->id());
+    Serial.print("->");
+    char message[255];
     for(int i=0; i < len; i++) {
-          u8x8log.print((char) data[i]);
+          Serial.print((char) data[i]);
+          message[i] = data[i];
     }
-    u8x8log.println();
+    message[len] = 0;
     
+    Serial.println();
+    //send text to all connected devices
     server->textAll(data,len);
+    LoRa.beginPacket();
+    //relay msg to LoRa
+    LoRa.print(message); 
+    if(LoRa.endPacket()){
+      Serial.println("Lora sent"); 
+    }else{
+      Serial.println("LoRa failed!");
+    }
+    
   }
 }
 
+//create websockets
 AsyncWebSocket ws("/msg");
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
+
+
+void onReceive(int packetSize) {
+  if (packetSize == 0) return;          // if there's no packet, return
+  char message[255];
+  int index = 0;
+  while (LoRa.available()) {            // can't use readString() in callback, so
+    message[index] = LoRa.read();
+    index ++;
+  }
+  message[index] = 0; //end string
+  Serial.println(message);
+  ws.textAll(message); //send to clients the msg received
+}
 
 void setup(){
   // Serial port for debugging purposes
   Serial.begin(9600);
   
-  SPI.begin(5, 19, 27, 18);
-  LoRa.setPins(SS, RST, DI0);
-
+  
   //screen
   u8x8.begin();
   u8x8.setFont(u8x8_font_chroma48medium8_r);
@@ -79,6 +104,7 @@ void setup(){
     return;
   }
 
+  //generate a unique SSID per device based 
   String ssid("LoRa_" + String((uint16_t) (ESP.getEfuseMac() >> 32),HEX)); 
   const char password[] = "";
   // You can remove the password parameter if you want the AP to be open.
@@ -86,10 +112,24 @@ void setup(){
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
+
+  u8x8log.print(ssid.c_str());
   
   // Print ESP32 Local IP Address
   Serial.println(WiFi.localIP());
 
+
+  SPI.begin(5, 19, 27, 18);
+  LoRa.setPins(SS, RST, DI0);
+  if (!LoRa.begin(BAND)) {             // initialize ratio at 915 MHz
+    Serial.println("LoRa init failed. Check your connections.");
+    while (true);                       // if failed, do nothing
+  }
+
+  //LoRa.onReceive(onReceive);
+  //LoRa.receive();
+  Serial.println("LoRa init succeeded.");
+  
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", "text/html");
@@ -109,6 +149,7 @@ void setup(){
     request->send(SPIFFS, "/style.css", "text/css");
   });
 
+  
 
   ws.onEvent(onEvent);
   server.addHandler(&ws);
@@ -119,4 +160,6 @@ void setup(){
 }
  
 void loop(){
+   // parse for a packet, and call onReceive with the result:
+  onReceive(LoRa.parsePacket());
 }
