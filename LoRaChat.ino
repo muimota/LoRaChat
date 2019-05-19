@@ -123,29 +123,9 @@ void setup(){
     while (true);                       // if failed, do nothing
   }
 
-  //LoRa.onReceive(onReceive);
-  //LoRa.receive();
   Serial.println("LoRa init succeeded.");
-  
-  // Route for root / web page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/index.html", "text/html");
-  });
-
-  // Route to javascript file
-  server.on("/jquery.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/jquery.min.js", "text/javascript");
-  });
-  // Route to javascript file
-  server.on("/frontend.js", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/frontend.js", "text/javascript");
-  });
-
-  // Route to load style.css file
-  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/style.css", "text/css");
-  });
-
+  //https://github.com/me-no-dev/ESPAsyncWebServer#serving-files-in-directory
+  server.serveStatic("/", SPIFFS, "/web/").setDefaultFile("index.html");;
   
 
   ws.onEvent(onEvent);
