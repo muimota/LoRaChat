@@ -1,7 +1,9 @@
 /*********
  * 2019 Martin Nadal
  * with portions of:
-  Rui SantosComplete project details at https://randomnerdtutorials.com  
+  Rui SantosComplete https://randomnerdtutorials.com/esp32-web-server-spiffs-spi-flash-file-system/ 
+  Martin Sikora https://medium.com/@martin.sikora/node-js-websocket-simple-chat-tutorial-2def3a841b61
+  
 *********/
 
 // Import required libraries
@@ -26,7 +28,6 @@ U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ 15, /* data=*/ 4, /* reset=*/
 uint8_t u8log_buffer[U8LOG_WIDTH*U8LOG_HEIGHT];
 U8X8LOG u8x8log;
 
-unsigned long lastTime;
 int counter;
 String message;
 
@@ -56,16 +57,12 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
     LoRa.beginPacket();
     //relay msg to LoRa
     LoRa.print(message); 
-    if(LoRa.endPacket()){
-      Serial.println("Lora sent"); 
-    }else{
-      Serial.println("LoRa failed!");
-    }
+    LoRa.endPacket();
     
   }
 }
 
-//create websockets
+//create websocket
 AsyncWebSocket ws("/msg");
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
