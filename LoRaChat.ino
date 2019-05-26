@@ -1,5 +1,5 @@
 /*********
- * 2019 Martin Nadal
+ * 2019 Martin Nadal 
  * with portions of:
   Rui SantosComplete https://randomnerdtutorials.com/esp32-web-server-spiffs-spi-flash-file-system/ 
   Martin Sikora https://medium.com/@martin.sikora/node-js-websocket-simple-chat-tutorial-2def3a841b61
@@ -110,8 +110,9 @@ void setup(){
   Serial.print("AP IP address: ");
   Serial.println(myIP);
 
-  u8x8log.print(ssid.c_str());
-  
+  u8x8log.print("SSID: ");
+  u8x8log.println(ssid.c_str());
+  u8x8log.println("192.168.4.1");
   // Print ESP32 Local IP Address
   Serial.println(WiFi.localIP());
 
