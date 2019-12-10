@@ -58,6 +58,7 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
     //relay msg to LoRa
     LoRa.print(message); 
     LoRa.endPacket();
+    u8x8log.println(message);
     
   }
 }
@@ -79,6 +80,8 @@ void onReceive(int packetSize) {
   message[index] = 0; //end string
   Serial.println(message);
   ws.textAll(message); //send to clients the msg received
+  u8x8log.println(message);
+    
 }
 
 void setup(){
@@ -91,7 +94,7 @@ void setup(){
   u8x8.setFont(u8x8_font_chroma48medium8_r);
   
   u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
-  u8x8log.setRedrawMode(1);    // 0: Update screen with newline, 1: Update screen for every char  
+  u8x8log.setRedrawMode(0);    // 0: Update screen with newline, 1: Update screen for every char  
 
   u8x8log.print("LoRaChat (c)2019\n");
   
@@ -131,7 +134,6 @@ void setup(){
 
   ws.onEvent(onEvent);
   server.addHandler(&ws);
-  
   // Start server
   server.begin();
  
