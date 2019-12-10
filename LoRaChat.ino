@@ -30,7 +30,16 @@ U8X8LOG u8x8log;
 
 int counter;
 String message;
+String LoRaMessage;
+String stationId;
+bool sendLoRa;
 
+//create websocket
+AsyncWebSocket ws("/msg");
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
+
+//websocket message
 void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   
   if(type == WS_EVT_CONNECT){
@@ -54,40 +63,60 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
     Serial.println();
     //send text to all connected devices
     server->textAll(data,len);
-    LoRa.beginPacket();
+
     //relay msg to LoRa
-    LoRa.print(message); 
-    LoRa.endPacket();
+    LoRaMessage = String(stationId) + String("|") + String(message);
+    sendLoRa = true;    
+    
     u8x8log.println(message);
     
   }
 }
 
-//create websocket
-AsyncWebSocket ws("/msg");
-// Create AsyncWebServer object on port 80
-AsyncWebServer server(80);
-
-
+//LoRa message
 void onReceive(int packetSize) {
+  
   if (packetSize == 0) return;          // if there's no packet, return
-  char message[255];
+  
+  char msgBuffer[255];
   int index = 0;
+  
   while (LoRa.available()) {            // can't use readString() in callback, so
-    message[index] = LoRa.read();
+    msgBuffer[index] = LoRa.read();
     index ++;
   }
-  message[index] = 0; //end string
+  msgBuffer[index] = 0; //end string
+
+  String received = String(msgBuffer);
+  //we are receiving the same messag we just sent
+  if(LoRaMessage.equals(received)){
+    Serial.println("echo from our own message");
+    return;
+  }
+  
+  LoRaMessage = received;
+  sendLoRa  = true;
+    
+  //get rid from the stationId converting it into a standard message
+  String message = LoRaMessage.substring(5);
   Serial.println(message);
   ws.textAll(message); //send to clients the msg received
   u8x8log.println(message);
     
 }
 
+
+
 void setup(){
   // Serial port for debugging purposes
   Serial.begin(9600);
-  
+
+  sendLoRa = false;
+  stationId = String((uint16_t) (ESP.getEfuseMac() >> 32),HEX);
+  //0 padding
+  for(int i=stationId.length();i<4;i++){
+    stationId = String("0") + stationId;
+  }
   
   //screen
   u8x8.begin();
@@ -105,7 +134,7 @@ void setup(){
   }
 
   //generate a unique SSID per device based 
-  String ssid("LoRa_" + String((uint16_t) (ESP.getEfuseMac() >> 32),HEX)); 
+  String ssid("LoRa_" + stationId); 
   const char password[] = "";
   // You can remove the password parameter if you want the AP to be open.
   WiFi.softAP(ssid.c_str(), password);
@@ -142,4 +171,16 @@ void setup(){
 void loop(){
    // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
+  
+  if(sendLoRa){
+    while(LoRa.beginPacket() == 0){
+      delay(10);  
+    };
+    LoRa.print(LoRaMessage); 
+    LoRa.endPacket();
+    sendLoRa = false;
+    Serial.print("LoRa repeat:");
+    Serial.println(LoRaMessage);
+  }
+  
 }
