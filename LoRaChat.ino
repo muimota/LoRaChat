@@ -34,6 +34,9 @@ String LoRaMessage;
 String stationId;
 bool sendLoRa;
 
+unsigned long lastLoRa = 0; //last LoRa message time
+
+
 //create websocket
 AsyncWebSocket ws("/msg");
 // Create AsyncWebServer object on port 80
@@ -53,6 +56,7 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
  
     Serial.print(client->id());
     Serial.print("->");
+    
     char message[255];
     for(int i=0; i < len; i++) {
           Serial.print((char) data[i]);
@@ -77,7 +81,7 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
 void onReceive(int packetSize) {
   
   if (packetSize == 0) return;          // if there's no packet, return
-  
+
   char msgBuffer[255];
   int index = 0;
   
@@ -87,9 +91,15 @@ void onReceive(int packetSize) {
   }
   msgBuffer[index] = 0; //end string
 
+  //detect if is LoRa noise checking if msgBuffer[4] == '|' 
+  if(msgBuffer[4] != '|'){
+    Serial.println(String("noise:")+String(msgBuffer));
+    return;
+  }
+
   String received = String(msgBuffer);
-  //we are receiving the same messag we just sent
-  if(LoRaMessage.equals(received)){
+  //we are receiving the same message we just sent
+  if((millis() - lastLoRa < 1000) && LoRaMessage.equals(received)){
     Serial.println("echo from our own message");
     return;
   }
@@ -172,15 +182,21 @@ void loop(){
    // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
   
+  
   if(sendLoRa){
+    //wait for the device to be ready
     while(LoRa.beginPacket() == 0){
-      delay(10);  
+      delay(1);  
     };
+    
+    //LoRa.beginPacket();
+    lastLoRa = millis();
     LoRa.print(LoRaMessage); 
     LoRa.endPacket();
     sendLoRa = false;
     Serial.print("LoRa repeat:");
     Serial.println(LoRaMessage);
+    
   }
   
 }
