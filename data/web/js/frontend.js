@@ -5,11 +5,12 @@ $(function () {
     var content = $('#content');
     var input = $('#input');
     var status = $('#status');
+	var wsUrl   = 'ws://localhost:8082' //'ws://192.168.4.1/msg'
 
     // my color assigned by the server
     var myColor = false;
     // my name sent to the server
-    var myName  = localStorage.getItem('myName') || false
+    var myName  = localStorage.getItem('myName')
 	var updateName = true
 	
     // if user is running mozilla then use it's built-in WebSocket
@@ -24,30 +25,38 @@ $(function () {
         return;
     }
 
-    // open connection
-    var connection = new WebSocket('ws://192.168.4.1/msg');
-
-    connection.onopen = function () {
-        // first we want users to enter their names
-        input.removeAttr('disabled');
-        status.text('Choose name:');
-        input.val(myName || '');
-    };
-
-    connection.onerror = function (error) {
-        // just in there were some problems with conenction...
-        content.html($('<p>', { text: 'Sorry, but there\'s some problem with your '
-                                    + 'connection or the server is down.' } ));
-    };
-
-    // most important part - incoming messages
-    connection.onmessage = function (message) {
-        input.removeAttr('disabled');
-        message = message.data
-        var chunks = message.split('|') 
-        addMessage(chunks[0], chunks[1],'red', new Date());
-    };
-
+    var connection = createConnection(wsUrl)
+    
+    function createConnection(wsUrl){
+    	
+    	// open connection
+    	var connection = new WebSocket(wsUrl);
+    
+    	connection.onopen = function () {
+        	updateName = true
+        	// first we want users to enter their names
+        	input.removeAttr('disabled');
+        	status.text('Choose name:');
+        	input.val(myName || '');
+    	};
+		/*
+    	connection.onerror = function (error) {
+        	// just in there were some problems with conenction...
+        	content.html($('<p>', { text: 'Sorry, but there\'s some problem with your '
+                                    	+ 'connection or the server is down.' } ));
+    	};
+		*/
+    	// most important part - incoming messages
+    	connection.onmessage = function (message) {
+        	input.removeAttr('disabled');
+        	message = message.data
+        	var chunks = message.split('|') 
+        	addMessage(chunks[0], chunks[1],'red', new Date());
+    	}
+    	
+    	return connection
+    }
+	
     /**
      * Send mesage when user presses Enter key
      */
@@ -62,6 +71,7 @@ $(function () {
                 myName = msg;
                 $(this).val('');
                 status.text('message:');
+                localStorage.setItem('myName',myName)
             	updateName = false
             }else{
                 connection.send(myName + '|' + msg);
@@ -80,11 +90,14 @@ $(function () {
      */
     setInterval(function() {
         if (connection.readyState !== 1) {
-            status.text('Error');
+            status.text('Error, reconnecting');
             input.attr('disabled', 'disabled').val('Unable to comminucate '
                                                  + 'with the WebSocket server.');
+            connection.close()
+            connection = createConnection(wsUrl)
+                                                 
         }
-    }, 3000);
+    }, 2000);
 
     /**
      * Add message to the chat window
