@@ -9,8 +9,9 @@ $(function () {
     // my color assigned by the server
     var myColor = false;
     // my name sent to the server
-    var myName = false;
-
+    var myName  = localStorage.getItem('myName') || false
+	var updateName = true
+	
     // if user is running mozilla then use it's built-in WebSocket
     window.WebSocket = window.WebSocket || window.MozWebSocket;
 
@@ -30,7 +31,7 @@ $(function () {
         // first we want users to enter their names
         input.removeAttr('disabled');
         status.text('Choose name:');
-        input.val('');
+        input.val(myName || '');
     };
 
     connection.onerror = function (error) {
@@ -57,10 +58,11 @@ $(function () {
                 return;
             }
              // we know that the first message sent from a user their name
-            if (myName === false) {
+            if (updateName) {
                 myName = msg;
                 $(this).val('');
                 status.text('message:');
+            	updateName = false
             }else{
                 connection.send(myName + '|' + msg);
                 $(this).val('');
