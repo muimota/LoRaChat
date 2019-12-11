@@ -5,7 +5,7 @@ $(function () {
     var content = $('#content');
     var input = $('#input');
     var status = $('#status');
-	var wsUrl   = 'ws://localhost:8082' //'ws://192.168.4.1/msg'
+	var wsUrl   = 'ws://192.168.4.1/msg'
 
     // my color assigned by the server
     var myColor = false;
@@ -39,13 +39,14 @@ $(function () {
         	status.text('Choose name:');
         	input.val(myName || '');
     	};
-		/*
+		
     	connection.onerror = function (error) {
         	// just in there were some problems with conenction...
-        	content.html($('<p>', { text: 'Sorry, but there\'s some problem with your '
-                                    	+ 'connection or the server is down.' } ));
+        	status.text('Error, reconnecting');
+            input.attr('disabled', 'disabled').val('Unable to comminucate '
+                                                 + 'with the WebSocket server.');
     	};
-		*/
+		
     	// most important part - incoming messages
     	connection.onmessage = function (message) {
         	input.removeAttr('disabled');
@@ -89,10 +90,7 @@ $(function () {
      * something is wrong.
      */
     setInterval(function() {
-        if (connection.readyState !== 1) {
-            status.text('Error, reconnecting');
-            input.attr('disabled', 'disabled').val('Unable to comminucate '
-                                                 + 'with the WebSocket server.');
+        if (connection.readyState != 1) {
             connection.close()
             connection = createConnection(wsUrl)
                                                  
