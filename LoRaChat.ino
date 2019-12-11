@@ -181,7 +181,7 @@ void setup(){
 void loop(){
    // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
-  
+  ws.cleanupClients();
   
   if(sendLoRa){
     //wait for the device to be ready
@@ -196,6 +196,7 @@ void loop(){
     sendLoRa = false;
     Serial.print("LoRa repeat:");
     Serial.println(LoRaMessage);
+    
     
   }
   
